@@ -1,15 +1,12 @@
-import os
-import sys
-import click
-import pprint
-import PyPDF2
-import requests
-import numpy as np
 import ast
-
-
+import click
+import numpy as np
+import os
+import requests
+import PyPDF2
 
 from openai import OpenAI
+
 
 # System input for the chat completion
 SYSTEM_INPUT = """ You will be provided with four inputs: resume, job_description, github_context and pdf_text_data.
@@ -61,7 +58,7 @@ Rules:
 
 # Initialize OpenAI client
 client = OpenAI(
-    api_key='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',
+    api_key=os.environ['OPEN_AI_API_KEY'],
 )
 
 def pretty_print_list(list_to_print):
@@ -110,10 +107,32 @@ def pretty_print_llm_response(llm_response):
 
 def interact_with_llm(job_description, resume, github_context,pdf_text_data):
 
-    # # Initialize OpenAI client
-    # client = OpenAI(
-    #   api_key='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',
-    # )
+    llm_response_json = {
+        "resume": {
+            "hard_skills": [],
+            "soft_skills": []
+        },
+        "job_description": {
+            "hard_skills": [],
+            "soft_skills": []
+        },
+        "missing_skills": {
+            "hard_skills": [],
+            "soft_skills": []
+        },
+        "github_skills": {
+            "hard_skills": [],
+            "soft_skills": []
+        },
+        "pdf_text_skills": {
+            "hard_skills": [],
+            "soft_skills": []
+        },
+        "recommendations": {
+            "improvements": []
+        }
+    }
+
     try:
         messages = [
                 {"role": "system", "content": SYSTEM_INPUT},
@@ -123,7 +142,7 @@ def interact_with_llm(job_description, resume, github_context,pdf_text_data):
             ]
         if github_context:
             messages.append({"role": "user", "content": github_context})
-        # try:
+
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             # prompt=user_input,
@@ -136,15 +155,15 @@ def interact_with_llm(job_description, resume, github_context,pdf_text_data):
     except Exception as exc:
         print(f"Unable to access ChatGpt API to extract skills `{exc}`")
 
-    # print(type(llm_response_json))
     missing_hard_skill = llm_response_json.get("missing_skills").get("hard_skills")
     github_assignment_hard_skills = llm_response_json.get("pdf_text_skills").get("hard_skills") + llm_response_json.get("github_skills").get("hard_skills")
-    # XXX Vishakha here
+
     print(f"\nMissing Hard Skills to be used for finding similarities: {missing_hard_skill}")
     print(f"Github & Assignment Hard Skills to be used for finding similarities: {github_assignment_hard_skills}\n")
 
     try:
         # XXX TODO - finish this
+        # XXX TODO call the new llm function with input you need to feed it, that may include resume /jd /skills and new relavent skills to fetch suggestion.
         embedding_github_assignment_hard_skills = get_embeddings(github_assignment_hard_skills)
         for skill in missing_hard_skill:
             relevant_skills = find_most_relevant_skills(skill, embedding_github_assignment_hard_skills)
@@ -153,9 +172,6 @@ def interact_with_llm(job_description, resume, github_context,pdf_text_data):
     except Exception as exc:
         print(f"Unable to access ChatGpt API due to find similar skills `{exc}`")
 
-    # call the new llm function with input you need to feed it, that may include resume /jd /skills and new relavent skills to fetch suggestion.
-
-###########################################################
 # Create embeddings for each skill
 def get_embeddings(skills):
     skill_embeddings = {}
@@ -170,7 +186,6 @@ def get_embeddings(skills):
 
 # Given an input skill, find the most relevant skills
 def find_most_relevant_skills(input_skill, skill_embeddings, top_n=3):
-    # print(skill_embeddings)
     input_embedding = client.embeddings.create(
         input=input_skill,
         model="text-embedding-ada-002"
@@ -186,7 +201,6 @@ def find_most_relevant_skills(input_skill, skill_embeddings, top_n=3):
     relevant_skills = sorted(similarities, key=similarities.get, reverse=True)[:top_n]
     # print(relevant_skills)
     return relevant_skills
-############################################################
 
 def read_pdf_files(directory_path):
     # Step 1: Check if directory exists
@@ -254,9 +268,10 @@ def fetch_user_github_info(username):
 
     Contributions: `contributors_url`. returns a list looks for `contributions`.
     """
+    github_api = os.environ['GITHUB_API_KEY']
     headers = {"Accept": "application/vnd.github+json",
                "X-GitHub-Api-Version": "2022-11-28",
-               "Authorization": "Bearer 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"}
+               "Authorization": f"Bearer {github_api}"}
     distinct_language = []
     try:
         url = f"https://api.github.com/users/{username}/repos"

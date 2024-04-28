@@ -1,233 +1,21 @@
-import ast
 import click
-import numpy as np
 import os
 import requests
 import PyPDF2
 
-from openai import OpenAI
+from llm import get_assignment_skills, interact_with_llm_to_fetch_skills, interact_with_llm_to_get_recommendation, get_closest_skill_recommendation
 
+def print_help_and_exit():
+    ctx = click.get_current_context()
+    click.echo(ctx.get_help())
+    ctx.exit()
 
-# System input for the chat completion
-SYSTEM_INPUT = """ You will be provided with four inputs: resume, job_description, github_context and pdf_text_data.
-Extract Hard Skills and Soft Skills from both resume and job_description.
-Compare all the Hard Skills and Soft Skills from resume and job_description to show the user all the Hard Skills and Soft Skills from the job_description that did not match
-with the resume's Hard Skills and Soft Skills. We are calling these unmatched hard skills and soft skills as missing skills.
-
-github_context contains the hard skills fetched from user’s github repositories.
-Extract hard skills and soft skills from the pdf_text_data.
-
-The skills extracted from github_context and pdf_text_data means that the user has worked on those skills before. So, provide recommendations ONLY on missing skills from resume
-and those recommendations should only be based on hard skills extracted from github_context and pdf_text_data. Generate recommendations on missing soft skills like "If you have
-any experience working on this skill, add it to the resume". 
-For example, if one of the missing skill is C# and C# is mentioned in skills extracted from github_context or pdf_text_data, then give the suggestion somewhat like 
-‘You have worked on C# before as per your github or assignments, you can add this to your resume’.
-
-Of all the relevant skills you are finding for missing skills, Generate recommendations on most relevant skills by picking first 2 skills and recommend like "You"
-
-Rules:
-1. Do not recommendations skills if only present in Job Description and not present in any other inputs. 
-2. Hard Skill Recommendations should be based on github_context, pdf_text_data and relevant skills. 
-3. Output format has to be following
-{
-  "resume": {
-    "hard_skills": [],
-    "soft_skills": []
-  },
-  "job_description": {
-    "hard_skills": [],
-    "soft_skills": []
-  },
-  "missing_skills": {
-    "hard_skills": [],
-    "soft_skills": []
-  },
-  "github_skills": {
-    "hard_skills": [],
-    "soft_skills": []
-  },
-  "pdf_text_skills": {
-    "hard_skills": [],
-    "soft_skills": []
-  },
-  "recommendations": {
-    "improvements": []
-  }
-}
-"""
-
-# Initialize OpenAI client
-client = OpenAI(
-    api_key=os.environ['OPEN_AI_API_KEY'],
-)
-
-def pretty_print_list(list_to_print):
-    if list_to_print:
-        for item in list_to_print:
-            print(f" - {item}")
-    else:
-        print(" - Not Specified")
-
-
-def pretty_print_llm_response(llm_response):
-
-    print("** Resume | Hard Skills **")
-    pretty_print_list(llm_response.get("resume").get("hard_skills"))
-    print("\n")
-
-    print("** Resume | Soft Skills **")
-    pretty_print_list(llm_response.get("resume").get("soft_skills"))
-    print("\n")
-
-    print("** Job Description | Hard Skills **")
-    pretty_print_list(llm_response.get("job_description").get("hard_skills"))
-    print("\n")
-
-    print("** Job Description | Soft Skills **")
-    pretty_print_list(llm_response.get("job_description").get("soft_skills"))
-    print("\n")
-    print("** Missing | Hard Skills **")
-    pretty_print_list(llm_response.get("missing_skills").get("hard_skills"))
-    print("\n")
-
-    print("** Missing | Soft Skills **")
-    pretty_print_list(llm_response.get("missing_skills").get("soft_skills"))
-    print("\n")
-
-    print("** GitHub Skills **")
-    pretty_print_list(llm_response.get("github_skills").get("hard_skills"))
-    print("\n")
-
-    print("** Assignment Skills **")
-    pretty_print_list(llm_response.get("pdf_text_skills").get("hard_skills"))
-    print("\n")
-
-    print("** Improvement Recommendations **")
-    pretty_print_list(llm_response.get("recommendations").get("improvements"))
-
-def interact_with_llm(job_description, resume, github_context,pdf_text_data):
-
-    llm_response_json = {
-        "resume": {
-            "hard_skills": [],
-            "soft_skills": []
-        },
-        "job_description": {
-            "hard_skills": [],
-            "soft_skills": []
-        },
-        "missing_skills": {
-            "hard_skills": [],
-            "soft_skills": []
-        },
-        "github_skills": {
-            "hard_skills": [],
-            "soft_skills": []
-        },
-        "pdf_text_skills": {
-            "hard_skills": [],
-            "soft_skills": []
-        },
-        "recommendations": {
-            "improvements": []
-        }
-    }
-
-    try:
-        messages = [
-                {"role": "system", "content": SYSTEM_INPUT},
-                {"role": "user", "content": job_description},
-                {"role": "user", "content": resume},
-                {"role": "user", "content": pdf_text_data}
-            ]
-        if github_context:
-            messages.append({"role": "user", "content": github_context})
-
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            # prompt=user_input,
-            messages=messages
-        )
-        llm_response = response.choices[0].message.content
-        # print(llm_response)
-        llm_response_json = ast.literal_eval(llm_response)
-        pretty_print_llm_response(llm_response_json)
-    except Exception as exc:
-        print(f"Unable to access ChatGpt API to extract skills `{exc}`")
-
-    missing_hard_skill = llm_response_json.get("missing_skills").get("hard_skills")
-    github_assignment_hard_skills = llm_response_json.get("pdf_text_skills").get("hard_skills") + llm_response_json.get("github_skills").get("hard_skills")
-
-    print(f"\nMissing Hard Skills to be used for finding similarities: {missing_hard_skill}")
-    print(f"Github & Assignment Hard Skills to be used for finding similarities: {github_assignment_hard_skills}\n")
-
-    try:
-        # XXX TODO - finish this
-        # XXX TODO call the new llm function with input you need to feed it, that may include resume /jd /skills and new relavent skills to fetch suggestion.
-        embedding_github_assignment_hard_skills = get_embeddings(github_assignment_hard_skills)
-        for skill in missing_hard_skill:
-            relevant_skills = find_most_relevant_skills(skill, embedding_github_assignment_hard_skills)
-            print(f"Most relevant skills for {skill}:  {relevant_skills}")
-
-    except Exception as exc:
-        print(f"Unable to access ChatGpt API due to find similar skills `{exc}`")
-
-# Create embeddings for each skill
-def get_embeddings(skills):
-    skill_embeddings = {}
-    for skill in skills:
-        response = client.embeddings.create(
-            input=skill,
-            model="text-embedding-ada-002"
-        )
-        skill_embeddings[skill] = response.data[0].embedding
-
-    return skill_embeddings
-
-# Given an input skill, find the most relevant skills
-def find_most_relevant_skills(input_skill, skill_embeddings, top_n=3):
-    input_embedding = client.embeddings.create(
-        input=input_skill,
-        model="text-embedding-ada-002"
-    ).data[0].embedding
-
-    # Calculate cosine similarity between the input skill and all other skills
-    similarities = {}
-    for skill, embedding in skill_embeddings.items():
-        similarity = np.dot(input_embedding, embedding) / (np.linalg.norm(input_embedding) * np.linalg.norm(embedding))
-        similarities[skill] = similarity
-
-    # Sort skills based on similarity and return the top N
-    relevant_skills = sorted(similarities, key=similarities.get, reverse=True)[:top_n]
-    # print(relevant_skills)
-    return relevant_skills
-
-def read_pdf_files(directory_path):
-    # Step 1: Check if directory exists
-    if not os.path.isdir(directory_path):
-        print("Invalid directory path.")
-        return None
-
-    text_data = []
-    # Step 2: Read PDF files and convert to text
-    for filename in os.listdir(directory_path):
-        # Initialize an empty list to store text data
-
-        if filename.endswith('.pdf'):
-            file_path = os.path.join(directory_path, filename)
-            with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-                # Initialize an empty string to store text from the PDF
-                pdf_text = ''
-                # Read each page of the PDF and append text to pdf_text
-                for page_num in range(len(pdf_reader.pages)):
-                    page = pdf_reader.pages[page_num]
-                    pdf_text += page.extract_text().replace('\n', ' ')
-                # print(f"{type(pdf_text)}")
-                # pdf_text.replace('\n', ' ')
-                text_data.append(pdf_text)
-
-    return str(text_data)
+def is_valid_file(value):
+    _, ext = os.path.splitext(value)
+    if ext in [".pdf", ".txt"]:
+        return True
+    print(f"File {value} is not a .txt or .pdf file")
+    return False
 
 def get_all_distinct_language(repos_langauge_urls, headers):
     return_value= []
@@ -243,21 +31,15 @@ def get_all_distinct_language(repos_langauge_urls, headers):
             continue
     return set(return_value)
 
-def has_collaborated(list_of_repos_contributors, headers):
-    """
-    Return True if has contributor in any repo. It will return true as soon as
-    first repo is found which has contributor.
-    XXX BUG- It is fetching info even for the forked repos.
-    """
-    for url in list_of_repos_contributors:
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-            contributors = response.json()
-            if len(contributors) > 1:
-                return True
-        except Exception as exc:
-            continue
+def user_exists(username):
+    if not username:
+        return False
+    try:
+        url = f"https://api.github.com/users/{username}"
+        response = requests.get(url)
+        return response.ok
+    except Exception as exc:
+        print(f"Unable to contact github API due to {exc}.\n")
 
     return False
 
@@ -275,7 +57,8 @@ def fetch_user_github_info(username):
     distinct_language = []
     try:
         url = f"https://api.github.com/users/{username}/repos"
-        # fetch all repos of the current username. NOTE: Only public repos will be available here.
+        # fetch all repos of the current username.
+        # NOTE: Only public repos will be available here.
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         repos = response.json()
@@ -297,8 +80,6 @@ def fetch_user_github_info(username):
                 else:
                     temp_data['contributors_url'].append(repo['contributors_url'])
 
-        # pprint.pprint(temp_data)
-        collaboration = has_collaborated(temp_data['contributors_url'], headers)
         distinct_language = get_all_distinct_language(temp_data['languages_urls'], headers)
 
 
@@ -308,52 +89,117 @@ def fetch_user_github_info(username):
 
     return distinct_language
 
-def user_exists(username):
-    if not username:
-        return False
-    try:
-        url = f"https://api.github.com/users/{username}"
-        response = requests.get(url)
-        return response.ok
-    except Exception as exc:
-        print(f"Unable to contact github API due to {exc}.\n")
+def read_pdf_files(directory_path, debug):
+    # Step 1: Check if directory exists
+    if not os.path.isdir(directory_path):
+        print("Invalid directory path.")
+        return None
 
-    return False
+    text_data = []
+    # Step 2: Read PDF files and convert to text
+    if debug:
+        print(f"Reading all PDF files in {directory_path} and converting them to text to extract assignment soft and hard skills")
+    for filename in os.listdir(directory_path):
+        # Initialize an empty list to store text data
 
-def print_help_and_exit():
-    ctx = click.get_current_context()
-    click.echo(ctx.get_help())
-    ctx.exit()
+        if filename.endswith('.pdf'):
+            file_path = os.path.join(directory_path, filename)
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                # Initialize an empty string to store text from the PDF
+                pdf_text = ''
+                # Read each page of the PDF and append text to pdf_text
+                for page_num in range(len(pdf_reader.pages)):
+                    page = pdf_reader.pages[page_num]
+                    pdf_text += page.extract_text().replace('\n', ' ')
 
-def is_valid_file(value):
-    _, ext = os.path.splitext(value)
-    if ext in [".pdf", ".txt"]:
-        return True
-    print(f"File {value} is not a .txt or .pdf file")
-    return False
+                text_data.append(pdf_text)
 
-# Command-line interface using Click
+    return str(text_data)
+
+def pretty_print_list(list_to_print):
+    if list_to_print:
+        for item in list_to_print:
+            print(f" - {item}")
+    else:
+        print(" - Not Specified")
+
+def pretty_print_context(context):
+
+    print("** Resume | Hard Skills **")
+    pretty_print_list(context.get("resume").get("hard_skills"))
+    print("\n")
+
+    print("** Resume | Soft Skills **")
+    pretty_print_list(context.get("resume").get("soft_skills"))
+    print("\n")
+
+    print("** Job Description | Hard Skills **")
+    pretty_print_list(context.get("job_description").get("hard_skills"))
+    print("\n")
+
+    print("** Job Description | Soft Skills **")
+    pretty_print_list(context.get("job_description").get("soft_skills"))
+    print("\n")
+    print("** Missing | Hard Skills **")
+    pretty_print_list(context.get("missing_skills").get("hard_skills"))
+    print("\n")
+
+    print("** Missing | Soft Skills **")
+    pretty_print_list(context.get("missing_skills").get("soft_skills"))
+    print("\n")
+
+    print("** GitHub Skills | Hard Skills **")
+    pretty_print_list(context.get("github_skills").get("hard_skills"))
+    print("\n")
+
+    print("** Assignment Skills | Hard Skills **")
+    pretty_print_list(context.get("assignment_skills").get("hard_skills"))
+    print("\n")
+
+    print("** Assignment Skills | Soft Skills**")
+    pretty_print_list(context.get("assignment_skills").get("soft_skills"))
+    print("\n")
+
+
+# Command-line interface using Click and main function calling all other functions
 @click.command()
 @click.option("--job-description", type=str, help="Job description for skill extraction")
 @click.option("--job-description-path", type=click.Path(exists=True, file_okay=True, dir_okay=False), help="Path to job description file. File Must be txt or pdf file")
 @click.option("--resume", type=str, help="Resume for skill matching")
 @click.option("--resume-path", type=click.Path(exists=True, file_okay=True, dir_okay=False), help="Path to resume file. File Must be txt or pdf file")
-@click.option("--resume-db", is_flag=True, help="Flag to tell cli to use first 5 default resume db")
-@click.option("--github-userid", type=str, help="GitHub user ID (optional)")
-def snoopy(job_description, job_description_path, resume, resume_path, resume_db, github_userid):
-    github_context = None
+@click.option("--assignment-path", required=True, type=click.Path(exists=True, file_okay=False, dir_okay=True), help="Path to assignment file. File Must be txt or pdf file. It is needed to get the missing skills")
+@click.option("--github-userid", required=False, type=str, help="GitHub user ID")
+@click.option('--debug', is_flag=True, help="Enable verbose/debug mode")
+def snoopy(job_description, job_description_path, resume, resume_path, assignment_path, github_userid, debug):
+    github_skills = None
+
+    if debug:
+        print("Validating if the job description/job_description_path is provided")
     if not job_description and not job_description_path:
         print("Neither --job-description nor --job-description-path was provided.")
         print_help_and_exit()
 
-    if not resume and not resume_path and not resume_db:
+    if debug:
+        print("Validating if the resume/resume_path is provided and is valid")
+    if not resume and not resume_path:
         print("Neither --resume or --resume_path was provided.")
         print_help_and_exit()
 
+    if debug and job_description_path:
+        print("Validating if the provided job_description_path is valid")
     if job_description_path and not is_valid_file(job_description_path):
         print_help_and_exit()
 
+    if debug and resume_path:
+        print("Validating if the provided resume_path is valid")
     if resume_path and not is_valid_file(resume_path):
+        print_help_and_exit()
+
+    if debug and assignment_path:
+        print("Validating if the provided assignment_path is valid")
+    if assignment_path and not os.path.isdir(assignment_path):
+        print("Invalid directory path {assignment_path}.")
         print_help_and_exit()
 
     # Prompt user for GitHub user ID if not provided
@@ -361,10 +207,14 @@ def snoopy(job_description, job_description_path, resume, resume_path, resume_db
         will_provide_github_userid = click.prompt("Do you want to provide your github id to fetch soft and hard skills?", default="N", type=click.Choice(['Y', 'N']))
         if not will_provide_github_userid == "N":
             github_userid = click.prompt("Github Userid")
+            if debug:
+                print("Validating if the github user is provided is valid")
             if not user_exists(github_userid):
                 print(f"Please ensure `{github_userid}` is the correct github id or try again later. For now, skipping pulling information github")
             # Fetch the user repos
-            github_context = str(fetch_user_github_info(github_userid))
+            github_skills = fetch_user_github_info(github_userid)
+            if debug:
+                print(f"Extracted distint languages for github user({github_userid}) are {github_skills}")
         else:
             print("Skipping fetching soft and hard skills using Github")
 
@@ -378,22 +228,29 @@ def snoopy(job_description, job_description_path, resume, resume_path, resume_db
         with open(resume_path, "r") as resume_file:
             resume = resume_file.read()
 
-    if resume_db:
-        resume_directory_path = "/Users/vtyagi/Desktop/Copy of data.jsonl"
+    assignment_context = read_pdf_files(assignment_path, debug)
+    assignment_skills = get_assignment_skills(assignment_context, debug)
 
-        with open(resume_directory_path, "r") as resume_file:
-            resume = resume_file.readline()
-        # print("........................\n")
+    jd_resume_skills = interact_with_llm_to_fetch_skills(job_description, resume, debug)
+    llm_input_json = {**assignment_skills, **jd_resume_skills, "github_skills": {"hard_skills" : github_skills}}
+
+    pretty_print_context(llm_input_json)
+    print("Skills extraction is complete.")
+    print("Now, fetching recommendations for the user.")
+
+    llm_response = interact_with_llm_to_get_recommendation(str(llm_input_json), job_description, debug)
+    print(llm_response)
+
+    myskills = list(llm_input_json["github_skills"]["hard_skills"]) + llm_input_json["assignment_skills"]["hard_skills"]
+
+    print('\n'+'***********************'+'\n')
+    for skill in llm_input_json["missing_skills"]["hard_skills"]:
+        llm_closest_skill_response = get_closest_skill_recommendation(myskills, skill, debug)
+        print('\n' + llm_closest_skill_response)
+
+    # llm_closest_skill_response = get_closest_skill_recommendation(str(llm_input_closest_skill), job_description, debug)
 
 
-    directory_path = "/Users/vtyagi/Desktop"
-    pdf_text_data = read_pdf_files(directory_path)
-    # if pdf_text_data:
-    #     print(pdf_text_data)
-
-    # Write a funciton to call interact_with_llm which does your work
-    interact_with_llm(job_description, resume, github_context,pdf_text_data)
-    # From function fetch_user_github_info, we need languages from the repo the user has contributed to
 
 if __name__ == "__main__":
     snoopy()

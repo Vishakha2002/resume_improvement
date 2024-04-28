@@ -1,0 +1,59 @@
+VISHAKHA TYAGI
+Education
+Masters in Computer Science Spring’ 21 - Present
+San Francisco State University GPA: 3.7 / 4.0
+Bachelor of Technology in Computer Science Engineering August’12 - June’16
+Dr. A. P. J. Abdul Kalam Technical University, Uttar Pradesh, India First Division
+Skills
+Programing Languages : Python , Java , C,C++
+Database : MySQL
+OS Platforms : Windows, Linux
+Software Platforms : Tableau, Weka, MySQL Workbench
+Cloud Platform : GCP, AWS
+Certifications : Supervised ML - Regression and Classification , Oracle Database 10g ,
+Apache Hadoop , Advanced Learning Algorithms
+Work Experience
+Teaching Assistant - Database Systems Fall’21- Fall’22
+Teaching Assistant - Data Mining Fall’22
+S O Infotech(P) LTD. , Noida, India June 2015 – July 2015
+Summer Training Program in Big Data Technology-Hadoop
+● Learned following subjects:
+- Big Data - Actual reason for Hadoop
+- Introduction to Hadoop
+- HDFS (Hadoop Distributed File System)
+- MapReduce
+- Yarn
+● Implemented the Map Reduce Algorithm using NYSE Daily Prices File & NYSE Daily Dividends
+File as an input
+● Analyzed Heterogeneous Data using Map Reduce
+Academic Projects
+● Analyzed Mental Health Survey in Tech Industry
+o Analyzed which set of question can best predict answers to other questions in the given
+survey
+o Found questions that more insightful and have similarities based on predefined factors
+o Used Multinomial logistic Regression model and KNN model for comparison & analysis
+o Used Scikit Learn to build the models
+● Developed Web Application using React and Django Framework
+o Worked on Django as a backend member of the team
+o Hosted the webapp on AWS
+o Attained knowledge of Django Framework
+● Implementation of Naïve Bayesian Classifier and k-fold cross validation
+o Used Tableau for Data visualization of Adult dataset
+o Build own Naïve Bayes Classifier
+o Evaluated the classifier using 10-fold cross validation and external evaluation measures
+● Cluster Analysis and Evaluation
+o Used IRIS dataset
+o Performed clustering using k-means and DBSCAN
+o Evaluated clustering results using external and internal evaluation measures
+● Build Database Model of Payroll Management System
+o Created a technical document to define conceptual design and architecture of database model
+o Used MySQL Workbench for forward Engineering and to build EER diagram
+o Created a discord bort that interacted with database model to test database requirements
+● Worked with Machine Learning Google Cloud APIs
+o Build Web Application using Vision API to classify images
+o Build real-time Language Translation Web Application using Speech to Text API
+● Attribute Clustering using Particle Swarm Optimization Technique
+o Studied previous works related to evolutionary computing techniques
+o Proposed an algorithm to improve the efficiency and performance of Attribute Clustering
+using PSO Technique
+o Compared the results with state-of-the-art methods

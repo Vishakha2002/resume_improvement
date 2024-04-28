@@ -63,3 +63,8 @@ Options:
   --debug                      Enable verbose/debug mode
   --help                       Show this message and exit.
 ```
+
+For Example try following command:
+```
+% python snoopy.py --job-description-path=test_jd.txt --resume-path=test_resume.txt --assignment-path /Users/vtyagi/Desktop
+```

@@ -9,7 +9,10 @@ $ python --version
 Python 3.7.9
 ```
 ### Clone Github repo
-TBD
+Clone this repo on your local machine
+```
+git clone https://github.com/Vishakha2002/resume_improvement.git
+```
 
 ### Create a virtual environment
 ```

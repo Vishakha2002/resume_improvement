@@ -5,7 +5,7 @@ Identification of Missing Skills and Generating Recommendations for Resume Impro
 # Setup Dev environment
 Resume improvement tool snoopy is build using following python version
 ```
-% python --version
+$ python --version
 Python 3.7.9
 ```
 ### Clone Github repo
@@ -13,21 +13,37 @@ TBD
 
 ### Create a virtual environment
 ```
-python -m venv snoopy
+$ python -m venv snoopy
 ```
 
 ### Activate the virtual environment
 ```
-source snoopy/bin/activate
+$ source snoopy/bin/activate
 ```
 
 ### install required python packages
-TBD
+```
+$ pip install -r requirements.txt
+```
 
-### 
+### Fetch github token
+
+Use [this](https://docs.github.com/en/enterprise-server@3.9/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#about-personal-access-tokens) document to fetch your personal github token.
+
+Then set it as environment variable using following command
+```
+$ export GITHUB_API_KEY=<REPLACE THIS WITH YOUR GITHUB TOKEN>
+```
+
+### Fetch openai token
+Use [this](https://platform.openai.com/docs/quickstart/step-2-set-up-your-api-key) tutorial to fetch and set the Open AI API Key 
+```
+$ export OPEN_AI_API_KEY=<REPLACE THIS WITH YOUR OPENAI API KEY>
+```
 
 # How does snoopy works
 ```
+$ python snoopy.py --help
 Usage: snoopy.py [OPTIONS]
 
 Options:

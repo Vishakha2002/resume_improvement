@@ -3,11 +3,8 @@ Identification of Missing Skills and Generating Recommendations for Resume Impro
 
 
 # Setup Dev environment
-Resume improvement tool snoopy is build using following python version
-```
-$ python --version
-Python 3.7.9
-```
+Resume improvement tool snoopy can run on python version > 3.7.9
+
 ### Clone Github repo
 Clone this repo on your local machine
 ```
@@ -16,17 +13,17 @@ git clone https://github.com/Vishakha2002/resume_improvement.git
 
 ### Create a virtual environment
 ```
-$ python -m venv snoopy
+python3 -m venv snoopy
 ```
 
 ### Activate the virtual environment
 ```
-$ source snoopy/bin/activate
+source snoopy/bin/activate
 ```
 
 ### install required python packages
 ```
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Fetch github token
@@ -35,13 +32,13 @@ Use [this](https://docs.github.com/en/enterprise-server@3.9/authentication/keepi
 
 Then set it as environment variable using following command
 ```
-$ export GITHUB_API_KEY=<REPLACE THIS WITH YOUR GITHUB TOKEN>
+export GITHUB_API_KEY=<REPLACE THIS WITH YOUR GITHUB TOKEN>
 ```
 
 ### Fetch openai token
 Use [this](https://platform.openai.com/docs/quickstart/step-2-set-up-your-api-key) tutorial to fetch and set the Open AI API Key 
 ```
-$ export OPEN_AI_API_KEY=<REPLACE THIS WITH YOUR OPENAI API KEY>
+export OPEN_AI_API_KEY=<REPLACE THIS WITH YOUR OPENAI API KEY>
 ```
 
 # How does snoopy works
@@ -66,5 +63,5 @@ Options:
 
 For Example try following command:
 ```
-% python snoopy.py --job-description-path=test_jd.txt --resume-path=test_resume.txt --assignment-path /Users/vtyagi/Desktop
+python snoopy.py --job-description-path=test_jd.txt --resume-path=test_resume.txt --assignment-path /Users/vtyagi/Desktop
 ```

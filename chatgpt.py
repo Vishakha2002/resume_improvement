@@ -1,16 +1,22 @@
 import ast
+import click
 import os
+import sys
 
 from llm_prompts import SYSTEM_EXTRACT_ASSIGNMENT_SKILLS, SYSTEM_GENERATE_RECOMMENDATIONS, SYSTEM_GENERATE_CLOSEST_SKILL_RECOMMENDATIONS, SYSTEM_SKILL_EXTRACTION
 from openai import OpenAI
 from pprint import pprint
 
 # Initialize OpenAI client
-client = OpenAI(
-    api_key=os.environ['OPEN_AI_API_KEY'],
-)
+try:
+    client = OpenAI(
+        api_key=os.environ['OPEN_AI_API_KEY'],
+    )
+except KeyError:
+    click.echo("Please follow README instructions to fetch and set OPEN_AI_API_KEY. Exiting now.")
+    sys.exit(1)
 
-def interact_with_llm_to_get_recommendation(llm_input, job_description, debug):
+def chatgpt_get_recommendation(llm_input, job_description, debug):
     if debug:
         print(f"Generating recommendations")
 
@@ -31,7 +37,7 @@ def interact_with_llm_to_get_recommendation(llm_input, job_description, debug):
         pprint(llm_response)
     return llm_response
 
-def get_assignment_skills(assignment_context, debug):
+def chatgpt_get_assignment_skills(assignment_context, debug):
     assignment_skills = {}
     if debug:
         print(f"Extracting Assignment skills using assignment context")
@@ -52,7 +58,7 @@ def get_assignment_skills(assignment_context, debug):
 
     return assignment_skills
 
-def interact_with_llm_to_fetch_skills(job_description, resume, debug):
+def chatgpt_fetch_skills(job_description, resume, debug):
     llm_response_json = {}
     if debug:
         print("Extracting hard & soft skills from resume & JD. Then comparing them fetching missing skills")
@@ -78,7 +84,7 @@ def interact_with_llm_to_fetch_skills(job_description, resume, debug):
 
     return llm_response_json
 
-def get_closest_skill_recommendation(my_skills, skill_needed, debug):
+def chatgpt_get_closest_skill_recommendation(my_skills, skill_needed, debug):
     msg = f"""I have skills in {my_skills} What are the closest skills among these to {skill_needed}, which I need to learn?
     """
 #     output_template ="""

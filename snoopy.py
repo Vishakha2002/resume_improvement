@@ -1,9 +1,22 @@
 import click
 import os
+import sys
 import requests
 import PyPDF2
 
-from llm import get_assignment_skills, interact_with_llm_to_fetch_skills, interact_with_llm_to_get_recommendation, get_closest_skill_recommendation
+from chatgpt import (
+    chatgpt_get_assignment_skills,
+    chatgpt_fetch_skills,
+    chatgpt_get_recommendation,
+    chatgpt_get_closest_skill_recommendation
+)
+
+from gemini import (
+    gemini_get_assignment_skills,
+    gemini_fetch_skills,
+    gemini_get_recommendation,
+    gemini_get_closest_skill_recommendation
+)
 
 def print_help_and_exit():
     ctx = click.get_current_context()
@@ -50,7 +63,11 @@ def fetch_user_github_info(username):
 
     Contributions: `contributors_url`. returns a list looks for `contributions`.
     """
-    github_api = os.environ['GITHUB_API_KEY']
+    try:
+        github_api = os.environ['GITHUB_API_KEY']
+    except KeyError:
+        click.echo("Please follow README instructions to fetch and set GITHUB_API_KEY. Exiting now.")
+        sys.exit(1)
     headers = {"Accept": "application/vnd.github+json",
                "X-GitHub-Api-Version": "2022-11-28",
                "Authorization": f"Bearer {github_api}"}
@@ -141,25 +158,28 @@ def pretty_print_context(context):
     print("** Job Description | Soft Skills **")
     pretty_print_list(context.get("job_description").get("soft_skills"))
     print("\n")
-    print("** Missing | Hard Skills **")
-    pretty_print_list(context.get("missing_skills").get("hard_skills"))
-    print("\n")
+    if context.get("missing_skills"):
+        print("** Missing | Hard Skills **")
+        pretty_print_list(context.get("missing_skills").get("hard_skills"))
+        print("\n")
 
-    print("** Missing | Soft Skills **")
-    pretty_print_list(context.get("missing_skills").get("soft_skills"))
-    print("\n")
+        print("** Missing | Soft Skills **")
+        pretty_print_list(context.get("missing_skills").get("soft_skills"))
+        print("\n")
 
-    print("** GitHub Skills | Hard Skills **")
-    pretty_print_list(context.get("github_skills").get("hard_skills"))
-    print("\n")
+    if context.get("github_skills"):
+        print("** GitHub Skills | Hard Skills **")
+        pretty_print_list(context.get("github_skills").get("hard_skills"))
+        print("\n")
 
-    print("** Assignment Skills | Hard Skills **")
-    pretty_print_list(context.get("assignment_skills").get("hard_skills"))
-    print("\n")
+    if context.get("assignment_skills"):
+        print("** Assignment Skills | Hard Skills **")
+        pretty_print_list(context.get("assignment_skills").get("hard_skills"))
+        print("\n")
 
-    print("** Assignment Skills | Soft Skills**")
-    pretty_print_list(context.get("assignment_skills").get("soft_skills"))
-    print("\n")
+        print("** Assignment Skills | Soft Skills**")
+        pretty_print_list(context.get("assignment_skills").get("soft_skills"))
+        print("\n")
 
 
 # Command-line interface using Click and main function calling all other functions
@@ -171,7 +191,8 @@ def pretty_print_context(context):
 @click.option("--assignment-path", required=True, type=click.Path(exists=True, file_okay=False, dir_okay=True), help="Path to assignment file. File Must be txt or pdf file. It is needed to get the missing skills")
 @click.option("--github-userid", required=False, type=str, help="GitHub user ID")
 @click.option('--debug', is_flag=True, help="Enable verbose/debug mode")
-def snoopy(job_description, job_description_path, resume, resume_path, assignment_path, github_userid, debug):
+@click.option('--model', type=click.Choice(['Gemini', 'Chatgpt']), default="Chatgpt", help='Choose the model: Gemini(to use Gemini Pro) or Chatgpt(to use Chat GPT 3.5 Turbo). [Default: Chatgpt] ')
+def snoopy(job_description, job_description_path, resume, resume_path, assignment_path, github_userid, debug, model):
     github_skills = None
 
     if debug:
@@ -229,28 +250,52 @@ def snoopy(job_description, job_description_path, resume, resume_path, assignmen
             resume = resume_file.read()
 
     assignment_context = read_pdf_files(assignment_path, debug)
-    assignment_skills = get_assignment_skills(assignment_context, debug)
 
-    jd_resume_skills = interact_with_llm_to_fetch_skills(job_description, resume, debug)
-    llm_input_json = {**assignment_skills, **jd_resume_skills, "github_skills": {"hard_skills" : github_skills}}
+    if model == "Chatgpt":
+        print('***********************'+'\n')
+        print(f"Using {model} 3.5 Turbo to process the request")
+        print('***********************'+'\n')
+        assignment_skills = chatgpt_get_assignment_skills(assignment_context, debug)
+        jd_resume_skills = chatgpt_fetch_skills(job_description, resume, debug)
+        llm_input_json = {**assignment_skills, **jd_resume_skills, "github_skills": {"hard_skills" : github_skills}}
 
-    pretty_print_context(llm_input_json)
-    print("Skills extraction is complete.")
-    print("Now, fetching recommendations for the user.")
+        pretty_print_context(llm_input_json)
+        print("Skills extraction is complete.")
+        print("Now, fetching recommendations for the user.")
 
-    llm_response = interact_with_llm_to_get_recommendation(str(llm_input_json), job_description, debug)
-    print(llm_response)
+        llm_response = chatgpt_get_recommendation(str(llm_input_json), job_description, debug)
+        print(llm_response)
 
-    myskills = list(llm_input_json["github_skills"]["hard_skills"]) + llm_input_json["assignment_skills"]["hard_skills"]
+        myskills = list(llm_input_json["github_skills"]["hard_skills"]) + llm_input_json["assignment_skills"]["hard_skills"]
 
-    print('\n'+'***********************'+'\n')
-    for skill in llm_input_json["missing_skills"]["hard_skills"]:
-        llm_closest_skill_response = get_closest_skill_recommendation(myskills, skill, debug)
-        print('\n' + llm_closest_skill_response)
+        print('\n'+'***********************'+'\n')
+        for skill in llm_input_json["missing_skills"]["hard_skills"]:
+            llm_closest_skill_response = chatgpt_get_closest_skill_recommendation(myskills, skill, debug)
+            print('\n' + llm_closest_skill_response)
 
-    # llm_closest_skill_response = get_closest_skill_recommendation(str(llm_input_closest_skill), job_description, debug)
+        # llm_closest_skill_response = get_closest_skill_recommendation(str(llm_input_closest_skill), job_description, debug)
+    else:
+        print('***********************'+'\n')
+        print(f"Using {model}-Pro to process the request")
+        print('***********************'+'\n')
 
+        assignment_skills = gemini_get_assignment_skills(assignment_context, debug)
+        jd_resume_skills = gemini_fetch_skills(job_description, resume, debug)
+        llm_input_json = { **assignment_skills, **jd_resume_skills, "github_skills": {"hard_skills" : github_skills}}
 
+        pretty_print_context(llm_input_json)
+        print("Skills extraction is complete.")
+        print("Now, fetching recommendations for the user.")
+
+        llm_response = gemini_get_recommendation(str(llm_input_json), job_description, debug)
+        print(llm_response)
+
+        myskills = list(llm_input_json["github_skills"]["hard_skills"]) + llm_input_json["assignment_skills"]["hard_skills"]
+
+        print('\n'+'***********************'+'\n')
+        for skill in llm_input_json["missing_skills"]["hard_skills"]:
+            llm_closest_skill_response = gemini_get_closest_skill_recommendation(myskills, skill, debug)
+            print('\n' + llm_closest_skill_response)
 
 if __name__ == "__main__":
     snoopy()
